@@ -85,7 +85,7 @@ class ProfilePicPage extends Component {
           alignItems: "center",
           marginBottom: 250
         }}>
-          <Card containerStyle={{flex: .6, borderColor: "blue"}}>
+          <Card containerStyle={{flex: .9, borderColor: "blue"}}>
             <View style={{flex: 1, justifyContent: "space-between"}}>
               {this.state.profilePicUri ?
                   <TouchableHighlight onPress={this.setProfilePic.bind(this)}>
