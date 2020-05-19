@@ -1,0 +1,16 @@
+{
+  "name": "ReactNativeTest",
+  "displayName": "Finna Test",
+  "expo": {
+    "name": "ReactNativeTest",
+    "slug": "expo-template-bare",
+    "privacy": "unlisted",
+    "version": "1.0.0",
+    "entryPoint": "node_modules/expo/AppEntry.js",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ]
+  }
+}
