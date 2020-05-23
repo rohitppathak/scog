@@ -5,7 +5,7 @@ import {
   Text,
   TextInput,
   TouchableHighlight,
-  View
+  View, Platform
 } from 'react-native';
 import 'react-native-gesture-handler';
 import {NavigationContainer} from '@react-navigation/native';
@@ -24,22 +24,23 @@ class UsernamePage extends Component {
 
   render() {
     return (
-        <DismissKeyboardView style={{flex: 1, justifyContent: "center"}}>
-          <KeyboardAvoidingView style={{flex: .4, marginBottom: 200}}
-                                behavior={"padding"}>
-            <Card containerStyle={{flex: 1, borderColor: "blue"}}
+        <DismissKeyboardView style={{flex: 1}}>
+          <KeyboardAvoidingView style={{flex: 1, justifyContent: "center"}}
+                                behavior={Platform.OS === "ios" && "padding"}>
+            <Card containerStyle={{borderColor: "blue"}}
                   title={"Summer Clown Olympic Games"}
                   titleStyle={{fontSize: 25}}
-                  heightLock={true}
             >
-              <View style={{flex: 1, justifyContent: "center"}}>
+              <View style={{justifyContent: "center"}}>
                 <TextInput
                     placeholder={"Name"}
                     placeholderTextColor={"gray"}
+                    multiline={true}
                     onChangeText={user => this.setState({user})}
                     style={{
+                      width: "100%",
                       fontSize: 20,
-                      height: 30,
+                      minHeight: 30,
                       borderBottomWidth: 1,
                       borderBottomColor: "gray",
                       marginBottom: 10
@@ -85,8 +86,8 @@ class ProfilePicPage extends Component {
           alignItems: "center",
           marginBottom: 250
         }}>
-          <Card containerStyle={{flex: .9, borderColor: "blue"}}>
-            <View style={{flex: 1, justifyContent: "space-between"}}>
+          <Card containerStyle={{borderColor: "blue"}}>
+            <View style={{justifyContent: "space-between"}}>
               {this.state.profilePicUri ?
                   <TouchableHighlight onPress={this.setProfilePic.bind(this)}>
                     <Image
@@ -111,6 +112,7 @@ class ProfilePicPage extends Component {
                   </TouchableHighlight>
               }
               <Button
+                  containerStyle={{paddingTop: 10}}
                   title={"NEXT"}
                   titleStyle={{fontSize: 15}}
                   buttonStyle={{backgroundColor: "blue"}}
