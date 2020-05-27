@@ -1,6 +1,5 @@
 import React, {Component} from "react";
 import {
-  findNodeHandle,
   FlatList,
   Keyboard,
   Switch,
@@ -13,9 +12,11 @@ import RNPickerSelect from "react-native-picker-select";
 import {Button, ButtonGroup, Card, Divider, Icon} from "react-native-elements"
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
-import {KeyboardAwareFlatList} from "react-native-keyboard-aware-scroll-view";
+import * as Yup from "yup";
+import {Formik, Field, FastField} from "formik";
 
-const Stack = createStackNavigator();
+const FullStack = createStackNavigator();
+const TasksStack = createStackNavigator();
 
 class Question extends Component {
   answerHovered = "mc";
@@ -33,10 +34,6 @@ class Question extends Component {
                        placeholder={"Question"} scrollEnabled={false}
                        onFocus={event => {
                          this.props.selectQuestion();
-                         this.props.scrollRef.props.scrollToFocusedInput(
-                             findNodeHandle(event.target),
-                             (this.props.options.length + 1) * 44 + 33.5 + 10
-                             + 42 + 15 + 44 + 70);
                        }}/>
             <Divider style={{marginBottom: 10}}/>
             <RNPickerSelect
@@ -92,10 +89,6 @@ class Question extends Component {
                                 text)}
                             onFocus={event => {
                               this.props.selectQuestion();
-                              this.props.scrollRef.props.scrollToFocusedInput(
-                                  findNodeHandle(event.target),
-                                  (this.props.options.length - index) * 44
-                                  + 42 + 15 + 44 + 70);
                             }}
                             editable={index !== this.props.otherIndex}
                             accessible={false}
@@ -171,11 +164,44 @@ class Question extends Component {
   }
 }
 
+class FlatListKeyboard extends Component {
+  state = {
+    keyboardSpace: 0
+  };
+
+  updatePadding(frames) {
+    this.setState({
+      keyboardSpace: frames.endCoordinates.height
+          + (this.props.extraScrollHeight || 0)
+    })
+  }
+
+  resetPadding(frames) {
+    this.setState({keyboardSpace: 0})
+  }
+
+  componentDidMount() {
+    Keyboard.addListener("keyboardWillShow", this.updatePadding.bind(this));
+    Keyboard.addListener("keyboardWillHide", this.resetPadding.bind(this));
+  }
+
+  componentWillUnmount() {
+    Keyboard.removeListener("keyboardWillShow");
+    Keyboard.removeListener("keyboardWillHide");
+  }
+
+  render() {
+    return (
+        <FlatList {...this.props} automaticallyAdjustContentInsets={false}
+                  contentInset={{bottom: this.state.keyboardSpace}}/>
+    )
+  }
+}
+
 class AddTask extends Component {
   answerChoices = [{label: "Multiple Choice", value: "mc"},
     {label: "Short Answer", value: "sa"},
     {label: "Checkboxes", value: "cb"}];
-  scrollRef: {props: {scrollToFocusedInput: () => {}}}
 
   state = {
     selectedQuestionIndex: 0,
@@ -191,213 +217,441 @@ class AddTask extends Component {
 
   render() {
     return (
-        <KeyboardAwareFlatList
-            keyboardShouldPersistTaps={"handled"}
-            innerRef={ref => this.scrollRef = ref}
-            style={{flex: 1}}
-            extraScrollHeight={-70}
-            extraHeight={70}
-            enableAutomaticScroll={false}
-            enableResetScrollToCoords={false}
-            keyboardDismissMode={"interactive"}
-            data={this.state.questions}
-            renderItem={({item, index}) =>
-                (<Question
-                    selected={index === this.state.selectedQuestionIndex}
-                    answerStyle={item.answerStyle}
-                    options={item.options}
-                    otherIndex={item.otherIndex}
-                    required={item.required}
-                    answerChoices={this.answerChoices}
-                    scrollRef={this.scrollRef}
-                    restrictDeleting={this.state.questions.length === 1}
-                    selectAnswerStyle={answerStyle => {
-                      item.answerStyle = answerStyle;
-                      this.setState({questions: this.state.questions});
-                    }}
-                    changeOptionText={(optionIndex, text) => {
-                      item.options[optionIndex] = text;
-                      this.setState({questions: this.state.questions});
-                    }}
-                    removeOption={optionIndex => {
-                      item.options = item.options.filter(
-                          (option, iterIndex) => optionIndex !== iterIndex);
-                      item.otherIndex = optionIndex
-                      === item.otherIndex ? null
-                          : item.otherIndex;
-                      this.setState({
-                        questions: this.state.questions,
-                        selectedQuestionIndex: index
-                      });
-                    }}
-                    addOption={() => {
-                      item.options.push("");
-                      this.setState({
-                        questions: this.state.questions,
-                        selectedQuestionIndex: index
-                      });
-                    }}
-                    addOtherOption={() => {
-                      item.otherIndex = item.options.length;
-                      item.options.push("Other");
-                      this.setState({
-                        questions: this.state.questions,
-                        selectedQuestionIndex: index
-                      });
-                    }}
-                    selectQuestion={() => this.setState(
-                        {selectedQuestionIndex: index})}
-                    addQuestion={() => {
-                      const {questions} = this.state;
-                      questions.push({
-                        answerStyle: this.answerChoices[0].value,
-                        options: [""],
-                        otherIndex: null,
-                        required: false
-                      });
-                      this.setState({questions});
-                    }}
-                    removeQuestion={() => {
-                      const {questions} = this.state;
-                      questions.splice(index, 1);
-                      this.setState({questions});
-                    }}
-                    toggleRequired={() => {
-                      const {questions} = this.state;
-                      questions[index].required = !questions[index].required;
-                      this.setState({questions, selectedQuestionIndex: index});
-                    }}
-                />)}/>
+        <View style={{flex: 1}}>
+          <FlatListKeyboard
+              keyboardShouldPersistTaps={"handled"}
+              extraScrollHeight={-70}
+              keyboardDismissMode={"interactive"}
+              data={this.state.questions}
+              renderItem={({item, index}) =>
+                  (<Question
+                      selected={index === this.state.selectedQuestionIndex}
+                      answerStyle={item.answerStyle}
+                      options={item.options}
+                      otherIndex={item.otherIndex}
+                      required={item.required}
+                      answerChoices={this.answerChoices}
+                      scrollRef={this.scrollRef}
+                      restrictDeleting={this.state.questions.length === 1}
+                      selectAnswerStyle={answerStyle => {
+                        item.answerStyle = answerStyle;
+                        this.setState({questions: this.state.questions});
+                      }}
+                      changeOptionText={(optionIndex, text) => {
+                        item.options[optionIndex] = text;
+                        this.setState({questions: this.state.questions});
+                      }}
+                      removeOption={optionIndex => {
+                        item.options = item.options.filter(
+                            (option, iterIndex) => optionIndex !== iterIndex);
+                        item.otherIndex = optionIndex
+                        === item.otherIndex ? null
+                            : item.otherIndex;
+                        this.setState({
+                          questions: this.state.questions,
+                          selectedQuestionIndex: index
+                        });
+                      }}
+                      addOption={() => {
+                        item.options.push("");
+                        this.setState({
+                          questions: this.state.questions,
+                          selectedQuestionIndex: index
+                        });
+                      }}
+                      addOtherOption={() => {
+                        item.otherIndex = item.options.length;
+                        item.options.push("Other");
+                        this.setState({
+                          questions: this.state.questions,
+                          selectedQuestionIndex: index
+                        });
+                      }}
+                      selectQuestion={() => this.setState(
+                          {selectedQuestionIndex: index})}
+                      addQuestion={() => {
+                        const {questions} = this.state;
+                        questions.push({
+                          answerStyle: this.answerChoices[0].value,
+                          options: [""],
+                          otherIndex: null,
+                          required: false
+                        });
+                        this.setState({questions});
+                      }}
+                      removeQuestion={() => {
+                        const {questions} = this.state;
+                        questions.splice(index, 1);
+                        this.setState({questions});
+                      }}
+                      toggleRequired={() => {
+                        const {questions} = this.state;
+                        questions[index].required = !questions[index].required;
+                        this.setState(
+                            {questions, selectedQuestionIndex: index});
+                      }}
+                  />)}/>
+        </View>
     )
   }
 }
 
-export default class Tasks extends Component {
+const questions = [
+  {
+    id: "0",
+    text: "What do you love about SCOG?",
+    type: "shortAnswer",
+    required: true
+  },
+  {
+    id: "1",
+    text: "What do you hate about SCOG?",
+    type: "shortAnswer",
+    required: true
+  },
+  {
+    id: "2",
+    text: "Who is the MVP?",
+    type: "multipleChoice",
+    required: true,
+    options: ["Rohit", "Ben", "Greg", "Other"]
+  },
+  {
+    id: "3",
+    text: "Who is the 4th man?",
+    type: "multipleChoice",
+    required: true,
+    options: ["Julien", "Morey", "Tierney", "Other"]
+  },
+  {
+    id: "4",
+    text: "Which sports did you like?",
+    type: "checkbox",
+    required: true,
+    options: ["Soccer", "Volleyball", "Basketball", "Badminton", "Smash"]
+  },
+  {
+    id: "5",
+    text: "Which sports did you not like?",
+    type: "checkbox",
+    required: true,
+    options: ["Soccer", "Volleyball", "Basketball", "Badminton", "Smash"]
+  }
+];
+
+class Form extends Component {
+  state = {
+    initialValues: {},
+    validationSchema: {}
+  };
+
+  componentDidMount() {
+    const initialValues = {};
+    const validationSchema = {};
+    questions.forEach(q => {
+      if (q.type === "shortAnswer") {
+        initialValues[q.id] = "";
+      } else if (q.type === "multipleChoice") {
+        initialValues[q.id] = "";
+      } else if (q.type === "checkbox") {
+        initialValues[q.id] = [];
+      }
+      validationSchema[q.id] = Yup.string();
+      if (q.required) {
+        validationSchema[q.id] = validationSchema[q.id].required(
+            "Required");
+      }
+    });
+    this.setState({
+      initialValues,
+      validationSchema: Yup.object().shape(validationSchema)
+    });
+  }
+
+  render() {
+    if (!Object.entries(this.state.initialValues).length) {
+      return null;
+    }
+    return (
+        <Formik initialValues={this.state.initialValues}
+                // validationSchema={this.state.validationSchema}
+                onSubmit={values => console.log(values)}
+                validateOnBlur={false}
+                validateOnChange={true}
+                validateOnMount={true}
+        >
+          {({handleChange, handleBlur, handleSubmit, values, setFieldValue, errors, touched, isValid, validateField, ...props}) => {
+            return (
+                <View>
+                  <FlatListKeyboard
+                      keyboardShouldPersistTaps={"handled"}
+                      extraScrollHeight={-70}
+                      keyboardDismissMode={"interactive"}
+                      data={questions}
+                      ListFooterComponent={
+                        <View style={{paddingTop: 20, paddingBottom: 30}}>
+                          {Object.keys(errors).length > 0 && <Text style={{paddingBottom: 10, alignSelf: "center", color: "red", fontStyle: "italic"}}>Missing required questions above</Text>}
+                          <Button
+                              style={{alignSelf: "center"}}
+                              onPress={handleSubmit}
+                              disabled={Object.keys(errors).length !== 0}
+                              title={"Submit"}/>
+                        </View>}
+                      renderItem={({item: q}) => (
+                          <FastField key={q.id} name={q.id} validate={value => validateQuestion(q, value)}>
+                            {({field, form, meta}) => (
+                                <Card key={q.id}
+                                      title={
+                                        <View>
+                                          <View style={{
+                                            alignSelf: "center",
+                                            flexDirection: "row"
+                                          }}>
+                                            <Text
+                                                style={{fontSize: 20}}>{q.text}</Text>
+                                            {q.required && <Text style={{
+                                              fontSize: 20,
+                                              color: "red"
+                                            }}> *</Text>}
+                                          </View>
+                                          {errors[q.id] && touched[q.id] && <Text
+                                              style={{
+                                                alignSelf: "center",
+                                                color: "red",
+                                                fontStyle: "italic"
+                                              }}>{errors[q.id]}</Text>}
+                                          <Divider style={{marginTop: 15}}/>
+                                        </View>}>
+                                  {q.type === "shortAnswer" ? <View style={{flex: 1}}>
+                                        <TextInput onChangeText={handleChange(q.id)}
+                                                   onBlur={handleBlur(q.id)}
+                                                   value={values[q.id]}
+                                                   placeholder={"Your answer here"}
+                                                   style={{
+                                                     marginTop: 15,
+                                                     paddingBottom: 3,
+                                                     paddingTop: 0,
+                                                     fontSize: 16
+                                                   }}/>
+                                        <Divider/>
+                                      </View> :
+                                      q.options.map((option, index) => (
+                                          <View key={index} style={{flex: 1}}>
+                                            <Button
+                                                title={option} type={"clear"}
+                                                icon={<Icon name={q.type
+                                                === "multipleChoice"
+                                                    ? (values[q.id] === option
+                                                        ? "circle"
+                                                        : "circle-thin")
+                                                    :
+                                                    (values[q.id].indexOf(option)
+                                                    !== -1
+                                                        ? "square" : "square-o")}
+                                                            type={"font-awesome"}/>}
+                                                onPress={() => {
+                                                  if (q.type === "multipleChoice") {
+                                                    setFieldValue(q.id, option);
+                                                  } else {
+                                                    const value = values[q.id];
+                                                    const i = value.indexOf(option);
+                                                    if (i !== -1) {
+                                                      setFieldValue(q.id,
+                                                          value.slice(0,
+                                                              i).concat(
+                                                              value.slice(i + 1)));
+                                                    } else {
+                                                      setFieldValue(q.id,
+                                                          value.concat([option]));
+                                                    }
+                                                  }
+                                                }}
+                                                buttonStyle={{
+                                                  padding: 0,
+                                                  justifyContent: "flex-start",
+                                                  paddingBottom: 10,
+                                                  paddingTop: 10
+                                                }}
+                                                containerStyle={{flex: 1}}
+                                                titleStyle={{
+                                                  fontSize: 16,
+                                                  paddingLeft: 10,
+                                                  color: "black"
+                                                }}/>
+                                            <Divider/>
+                                          </View>
+                                      ))}
+                                </Card>
+                            )}
+                          </FastField>
+                      )}
+                  >
+                  </FlatListKeyboard>
+                </View>
+            )
+          }}
+        </Formik>
+    )
+  }
+}
+
+const validateQuestion = (question, value) => {
+  if (question.required && !value.length) return "Required";
+};
+
+
+class Results extends Component {
+
+}
+
+
+class TasksContent extends Component {
   state = {
     selectedIndex: 0
   };
 
   render() {
     return (
+        <View style={{flex: 1}}>
+          <ButtonGroup
+              selectedButtonStyle={{backgroundColor: buttonGroupSelectedColor}}
+              buttons={[{
+                element: () => (<Icon
+                    color={this.state.selectedIndex === 0
+                        ? buttonGroupSelectedColor
+                        : buttonGroupDisabledColor}
+                    name={"hourglass-half"}
+                    type={"font-awesome"}
+                    size={14}
+                    iconStyle={{fontSize: 20}}
+                    reverse={this.state.selectedIndex === 0}/>)
+              }, {
+                element: () => (<Icon
+                    color={this.state.selectedIndex === 1
+                        ? buttonGroupSelectedColor
+                        : buttonGroupDisabledColor}
+                    name={"check-square-o"}
+                    type={"font-awesome"}
+                    size={14}
+                    iconStyle={{fontSize: 24}}
+                    reverse={this.state.selectedIndex === 1}/>)
+              }, {
+                element: () => (<Icon
+                    color={this.state.selectedIndex === 2
+                        ? buttonGroupSelectedColor
+                        : buttonGroupDisabledColor}
+                    name={"list-ul"}
+                    type={"font-awesome"}
+                    size={14}
+                    iconStyle={{fontSize: 20}}
+                    reverse={this.state.selectedIndex === 2}/>)
+              }]}
+              onPress={selectedIndex => this.setState(
+                  {selectedIndex})}
+              selectedIndex={this.state.selectedIndex}
+              containerStyle={{
+                height: 40,
+                marginHorizontal: 0,
+                marginVertical: 0
+              }}/>
+          <FlatList
+              data={this.state.selectedIndex ? [] : cards}
+              renderItem={({item}) => (
+                  <View style={{
+                    flexDirection: "row"
+                  }}>
+                    <TouchableWithoutFeedback style={{flex: 1}}
+                                              onPress={() => this.props.navigation.navigate(
+                                                  "Form")}>
+                      <Card
+                          title={item[0].title}
+                          image={item[0].image}
+                          imageProps={{
+                            style: {
+                              width: "100%",
+                              aspectRatio: 1
+                            }
+                          }}
+                          containerStyle={{
+                            flex: 1,
+                            margin: 0,
+                            marginHorizontal: 15,
+                            marginBottom: 15
+                          }}
+                      >
+                        <Text
+                            style={{textAlign: "center"}}>{item[0].description}</Text>
+                      </Card>
+                    </TouchableWithoutFeedback>
+                    {item[1] ?
+                        <TouchableWithoutFeedback style={{flex: 1}}
+                                                  onPress={() => this.props.navigation.navigate(
+                                                      "Form")}>
+                          <Card
+                              title={item[1].title}
+                              image={item[1].image}
+                              imageProps={{
+                                style: {
+                                  width: "100%",
+                                  aspectRatio: 1
+                                }
+                              }}
+                              containerStyle={{
+                                flex: 1,
+                                margin: 0,
+                                marginHorizontal: 15,
+                                marginBottom: 15
+                              }}
+                          >
+                            <Text
+                                style={{textAlign: "center"}}>{item[1].description}</Text>
+                          </Card>
+                        </TouchableWithoutFeedback> :
+                        <View style={{flex: 1, padding: 15}}/>}
+                  </View>)
+              }
+              keyExtractor={item => item[0].key}
+          />
+        </View>
+    )
+  }
+}
+
+export default class Tasks extends Component {
+  render() {
+    return (
         <NavigationContainer>
-          <Stack.Navigator mode={"modal"}>
-            <Stack.Screen name={"Tasks"} options={({navigation}) => ({
-              headerRight: () => (<Icon
-                  color={"blue"}
-                  name={"create"}
-                  size={14}
-                  raised
-                  iconStyle={{fontSize: 20}}
-                  containerStyle={{marginRight: 15}}
-                  reverse
-                  onPress={() => navigation.navigate("New Task")}/>)
-            })}>
-              {props =>
-                  <View style={{flex: 1}}>
-                    <ButtonGroup
-                        selectedButtonStyle={{backgroundColor: buttonGroupSelectedColor}}
-                        buttons={[{
-                          element: () => (<Icon
-                              color={this.state.selectedIndex === 0
-                                  ? buttonGroupSelectedColor
-                                  : buttonGroupDisabledColor}
-                              name={"hourglass-half"}
-                              type={"font-awesome"}
-                              size={14}
-                              iconStyle={{fontSize: 20}}
-                              reverse={this.state.selectedIndex === 0}/>)
-                        }, {
-                          element: () => (<Icon
-                              color={this.state.selectedIndex === 1
-                                  ? buttonGroupSelectedColor
-                                  : buttonGroupDisabledColor}
-                              name={"check-square-o"}
-                              type={"font-awesome"}
-                              size={14}
-                              iconStyle={{fontSize: 24}}
-                              reverse={this.state.selectedIndex === 1}/>)
-                        }, {
-                          element: () => (<Icon
-                              color={this.state.selectedIndex === 2
-                                  ? buttonGroupSelectedColor
-                                  : buttonGroupDisabledColor}
-                              name={"list-ul"}
-                              type={"font-awesome"}
-                              size={14}
-                              iconStyle={{fontSize: 20}}
-                              reverse={this.state.selectedIndex === 2}/>)
-                        }]}
-                        onPress={selectedIndex => this.setState(
-                            {selectedIndex})}
-                        selectedIndex={this.state.selectedIndex}
-                        containerStyle={{
-                          height: 40,
-                          marginHorizontal: 0,
-                          marginVertical: 0
-                        }}/>
-                    <FlatList
-                        data={this.state.selectedIndex ? [] : cards}
-                        renderItem={({item}) => (
-                            <View style={{
-                              flexDirection: "row"
-                            }}>
-                              <Card
-                                  title={item[0].title}
-                                  image={item[0].image}
-                                  imageProps={{
-                                    style: {
-                                      width: "100%",
-                                      aspectRatio: 1
-                                    }
-                                  }}
-                                  containerStyle={{
-                                    flex: 1,
-                                    margin: 0,
-                                    marginHorizontal: 15,
-                                    marginBottom: 15
-                                  }}
-                              >
-                                <Text style={{textAlign: "center"}}>Input your
-                                  availability for the summer</Text>
-                              </Card>
-                              {item[1] ?
-                                  <Card
-                                      title={item[1].title}
-                                      image={item[1].image}
-                                      imageProps={{
-                                        style: {
-                                          width: "100%",
-                                          aspectRatio: 1
-                                        }
-                                      }}
-                                      containerStyle={{
-                                        flex: 1,
-                                        margin: 0,
-                                        marginHorizontal: 15,
-                                        marginBottom: 15
-                                      }}
-                                  >
-                                    <Text style={{textAlign: "center"}}>Input
-                                      your
-                                      availability for the summer</Text>
-                                  </Card> :
-                                  <View style={{flex: 1, padding: 15}}/>}
-                            </View>)
-                        }
-                        keyExtractor={item => item[0].key}
-                    />
-                  </View>}
-            </Stack.Screen>
-            <Stack.Screen name={"New Task"} component={AddTask}
-                          options={{
-                            headerLeft: ({onPress}) => (
-                                <Button title={"Cancel"} onPress={onPress}
-                                        type={"clear"}
-                                        titleStyle={{color: "red"}}/>)
-                          }}/>
-          </Stack.Navigator>
+          <FullStack.Navigator>
+            <FullStack.Screen name={"Tasks Home"}
+                              options={{headerShown: false}}>
+              {props => <TasksStack.Navigator mode={"modal"}>
+                <TasksStack.Screen name={"Tasks"} component={TasksContent}
+                                   options={({navigation}) => ({
+                                     headerRight: () => (<Icon
+                                         color={"blue"}
+                                         name={"create"}
+                                         size={14}
+                                         raised
+                                         iconStyle={{fontSize: 20}}
+                                         containerStyle={{marginRight: 15}}
+                                         reverse
+                                         onPress={() => navigation.navigate(
+                                             "New Task")}/>)
+                                   })}/>
+                <TasksStack.Screen name={"New Task"} component={AddTask}
+                                   options={{
+                                     headerLeft: ({onPress}) => (
+                                         <Button title={"Cancel"}
+                                                 onPress={onPress}
+                                                 type={"clear"}
+                                                 titleStyle={{color: "red"}}/>)
+                                   }}/>
+              </TasksStack.Navigator>}
+            </FullStack.Screen>
+            <FullStack.Screen name={"Form"} component={Form}/>
+          </FullStack.Navigator>
         </NavigationContainer>
-    );
+    )
   }
 }
 
@@ -406,40 +660,24 @@ const cards = [
     {
       title: "Availability",
       image: require("./images/clock.jpg"),
-      key: "0"
+      description: "Input your availability for the summer",
+      key: "0",
+      screen: "Form"
     },
     {
-      title: "Availability",
-      image: require("./images/clock.jpg")
+      title: "Form",
+      description: "Give your suggestions",
+      image: require("./images/question.jpg"),
+      screen: "Form"
     }
   ],
   [
     {
-      title: "Availability",
-      image: require("./images/clock.jpg"),
-      key: "1"
-    },
-    {
-      title: "Availability",
-      image: require("./images/clock.jpg")
-    }
-  ],
-  [
-    {
-      title: "Availability",
-      image: require("./images/clock.jpg"),
-      key: "2"
-    },
-    {
-      title: "Availability",
-      image: require("./images/clock.jpg")
-    }
-  ],
-  [
-    {
-      title: "Availability",
-      image: require("./images/clock.jpg"),
-      key: "3"
+      title: "Results",
+      description: "See the results",
+      key: "1",
+      image: require("./images/question.jpg"),
+      screen: "Form"
     }
   ]
 ];

@@ -14,7 +14,6 @@ export default class App extends Component {
     await AsyncStorage.removeItem("profilePicUri");
     const user = await getData("user") || "";
     const profilePicUri = await getData("profilePicUri") || null;
-    console.log(user, profilePicUri);
     this.setState({user, profilePicUri});
   }
 
