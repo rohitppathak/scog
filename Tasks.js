@@ -2,18 +2,19 @@ import React, {Component} from "react";
 import {
   FlatList,
   Keyboard,
+  SafeAreaView,
   Switch,
   Text,
   TextInput,
   TouchableWithoutFeedback,
-  View
+  View, Dimensions
 } from 'react-native';
 import RNPickerSelect from "react-native-picker-select";
 import {Button, ButtonGroup, Card, Divider, Icon} from "react-native-elements"
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import * as Yup from "yup";
-import {Formik, Field, FastField} from "formik";
+import {FastField, Formik} from "formik";
 
 const FullStack = createStackNavigator();
 const TasksStack = createStackNavigator();
@@ -374,7 +375,7 @@ class Form extends Component {
     }
     return (
         <Formik initialValues={this.state.initialValues}
-                // validationSchema={this.state.validationSchema}
+            // validationSchema={this.state.validationSchema}
                 onSubmit={values => console.log(values)}
                 validateOnBlur={false}
                 validateOnChange={true}
@@ -390,7 +391,12 @@ class Form extends Component {
                       data={questions}
                       ListFooterComponent={
                         <View style={{paddingTop: 20, paddingBottom: 30}}>
-                          {Object.keys(errors).length > 0 && <Text style={{paddingBottom: 10, alignSelf: "center", color: "red", fontStyle: "italic"}}>Missing required questions above</Text>}
+                          {Object.keys(errors).length > 0 && <Text style={{
+                            paddingBottom: 10,
+                            alignSelf: "center",
+                            color: "red",
+                            fontStyle: "italic"
+                          }}>Missing required questions above</Text>}
                           <Button
                               style={{alignSelf: "center"}}
                               onPress={handleSubmit}
@@ -398,7 +404,9 @@ class Form extends Component {
                               title={"Submit"}/>
                         </View>}
                       renderItem={({item: q}) => (
-                          <FastField key={q.id} name={q.id} validate={value => validateQuestion(q, value)}>
+                          <FastField key={q.id} name={q.id}
+                                     validate={value => validateQuestion(q,
+                                         value)}>
                             {({field, form, meta}) => (
                                 <Card key={q.id}
                                       title={
@@ -414,7 +422,8 @@ class Form extends Component {
                                               color: "red"
                                             }}> *</Text>}
                                           </View>
-                                          {errors[q.id] && touched[q.id] && <Text
+                                          {errors[q.id] && touched[q.id] &&
+                                          <Text
                                               style={{
                                                 alignSelf: "center",
                                                 color: "red",
@@ -422,7 +431,8 @@ class Form extends Component {
                                               }}>{errors[q.id]}</Text>}
                                           <Divider style={{marginTop: 15}}/>
                                         </View>}>
-                                  {q.type === "shortAnswer" ? <View style={{flex: 1}}>
+                                  {q.type === "shortAnswer" ? <View
+                                          style={{flex: 1}}>
                                         <TextInput onChangeText={handleChange(q.id)}
                                                    onBlur={handleBlur(q.id)}
                                                    value={values[q.id]}
@@ -445,24 +455,30 @@ class Form extends Component {
                                                         ? "circle"
                                                         : "circle-thin")
                                                     :
-                                                    (values[q.id].indexOf(option)
+                                                    (values[q.id].indexOf(
+                                                        option)
                                                     !== -1
-                                                        ? "square" : "square-o")}
+                                                        ? "square"
+                                                        : "square-o")}
                                                             type={"font-awesome"}/>}
                                                 onPress={() => {
-                                                  if (q.type === "multipleChoice") {
+                                                  if (q.type
+                                                      === "multipleChoice") {
                                                     setFieldValue(q.id, option);
                                                   } else {
                                                     const value = values[q.id];
-                                                    const i = value.indexOf(option);
+                                                    const i = value.indexOf(
+                                                        option);
                                                     if (i !== -1) {
                                                       setFieldValue(q.id,
                                                           value.slice(0,
                                                               i).concat(
-                                                              value.slice(i + 1)));
+                                                              value.slice(
+                                                                  i + 1)));
                                                     } else {
                                                       setFieldValue(q.id,
-                                                          value.concat([option]));
+                                                          value.concat(
+                                                              [option]));
                                                     }
                                                   }
                                                 }}
@@ -496,14 +512,50 @@ class Form extends Component {
 }
 
 const validateQuestion = (question, value) => {
-  if (question.required && !value.length) return "Required";
+  if (question.required && !value.length) {
+    return "Required";
+  }
 };
 
-
 class Results extends Component {
-
+  render() {
+    const labels = ["Finna", "Gonna", "Super", "Duper"];
+    const data = [14, 56, 23, 44];
+    const max = Math.max(...data);
+    const sum = data.reduce((a, b) => a + b, 0);
+    return (
+        <SafeAreaView style={{display: "flex", flexDirection: "row"}}>
+          <View style={{maxWidth: 100}}>
+            {labels.map(label => <View style={{
+              height: 50,
+              justifyContent: "center",
+              padding: 5
+            }}><Text>{label}</Text></View>)}
+          </View>
+          <View style={{flex: 1}}>
+            {data.map(bar => {
+              return <View style={{
+                flex: 1,
+                margin: 5,
+                height: 50,
+                flexDirection: "row"
+              }}>
+                <View style={{flex: bar / max, backgroundColor: "pink"}}/>
+                <View style={{
+                  maxWidth: 100,
+                  justifyContent: "center"
+                }}><Text>{bar} ({(bar * 100 / sum).toFixed(2)}%)</Text></View>
+                <View style={{
+                  flex: 1 - bar / max,
+                  backgroundColor: "transparent"
+                }}/>
+              </View>
+            })}
+          </View>
+        </SafeAreaView>
+    )
+  }
 }
-
 
 class TasksContent extends Component {
   state = {
@@ -555,62 +607,44 @@ class TasksContent extends Component {
                 marginVertical: 0
               }}/>
           <FlatList
-              data={this.state.selectedIndex ? [] : cards}
-              renderItem={({item}) => (
-                  <View style={{
-                    flexDirection: "row"
-                  }}>
-                    <TouchableWithoutFeedback style={{flex: 1}}
-                                              onPress={() => this.props.navigation.navigate(
-                                                  "Form")}>
-                      <Card
-                          title={item[0].title}
-                          image={item[0].image}
-                          imageProps={{
-                            style: {
-                              width: "100%",
-                              aspectRatio: 1
-                            }
-                          }}
-                          containerStyle={{
-                            flex: 1,
-                            margin: 0,
-                            marginHorizontal: 15,
-                            marginBottom: 15
-                          }}
-                      >
-                        <Text
-                            style={{textAlign: "center"}}>{item[0].description}</Text>
-                      </Card>
-                    </TouchableWithoutFeedback>
-                    {item[1] ?
-                        <TouchableWithoutFeedback style={{flex: 1}}
-                                                  onPress={() => this.props.navigation.navigate(
-                                                      "Form")}>
-                          <Card
-                              title={item[1].title}
-                              image={item[1].image}
-                              imageProps={{
-                                style: {
-                                  width: "100%",
-                                  aspectRatio: 1
-                                }
-                              }}
-                              containerStyle={{
-                                flex: 1,
-                                margin: 0,
-                                marginHorizontal: 15,
-                                marginBottom: 15
-                              }}
-                          >
-                            <Text
-                                style={{textAlign: "center"}}>{item[1].description}</Text>
-                          </Card>
-                        </TouchableWithoutFeedback> :
-                        <View style={{flex: 1, padding: 15}}/>}
-                  </View>)
+              data={(() => {
+                const columns = Math.round(Dimensions.get("window").width / 150) - 1;
+                let lastRowCols = cards.length % columns;
+                while (lastRowCols > 0 && lastRowCols < columns) {
+                  cards.push({empty: true});
+                  lastRowCols += 1;
+                }
+                return cards;
+              })()}
+              numColumns={Math.round(Dimensions.get("window").width / 150) - 1}
+              renderItem={({item}) => {
+                console.log(item);
+                if (item.empty) return <View style={{flex: 1, padding: 15}}/>;
+                else return (
+                  item ? <TouchableWithoutFeedback
+                      onPress={() => this.props.navigation.navigate("Form")}>
+                    <Card
+                        title={item.title}
+                        image={item.image}
+                        imageProps={{
+                          style: {
+                            width: "100%",
+                            aspectRatio: 1
+                          }
+                        }}
+                        containerStyle={{
+                          flex: 1,
+                          margin: 0,
+                          marginHorizontal: 15,
+                          marginBottom: 15
+                        }}
+                    >
+                      <Text
+                          style={{textAlign: "center"}}>{item.description}</Text>
+                    </Card>
+                  </TouchableWithoutFeedback> : null)}
               }
-              keyExtractor={item => item[0].key}
+              keyExtractor={item => item.key}
           />
         </View>
     )
@@ -648,7 +682,7 @@ export default class Tasks extends Component {
                                    }}/>
               </TasksStack.Navigator>}
             </FullStack.Screen>
-            <FullStack.Screen name={"Form"} component={Form}/>
+            <FullStack.Screen name={"Form"} component={Results}/>
           </FullStack.Navigator>
         </NavigationContainer>
     )
@@ -656,30 +690,54 @@ export default class Tasks extends Component {
 }
 
 const cards = [
-  [
-    {
-      title: "Availability",
-      image: require("./images/clock.jpg"),
-      description: "Input your availability for the summer",
-      key: "0",
-      screen: "Form"
-    },
-    {
-      title: "Form",
-      description: "Give your suggestions",
-      image: require("./images/question.jpg"),
-      screen: "Form"
-    }
-  ],
-  [
-    {
-      title: "Results",
-      description: "See the results",
-      key: "1",
-      image: require("./images/question.jpg"),
-      screen: "Form"
-    }
-  ]
+  {
+    title: "Availability",
+    image: require("./images/clock.jpg"),
+    description: "Input your availability for the summer",
+    key: "0",
+    screen: "Form"
+  },
+  {
+    title: "Form",
+    description: "Give your suggestions",
+    image: require("./images/question.jpg"),
+    screen: "Form",
+    key: "1"
+  },
+  {
+    title: "Results",
+    description: "See the results",
+    key: "2",
+    image: require("./images/question.jpg"),
+    screen: "Form"
+  },
+  {
+    title: "Results",
+    description: "See the results",
+    key: "3",
+    image: require("./images/question.jpg"),
+    screen: "Form"
+  },{
+    title: "Availability",
+    image: require("./images/clock.jpg"),
+    description: "Input your availability for the summer",
+    key: "4",
+    screen: "Form"
+  },
+  {
+    title: "Form",
+    description: "Give your suggestions",
+    image: require("./images/question.jpg"),
+    screen: "Form",
+    key: "5"
+  },
+  {
+    title: "Results",
+    description: "See the results",
+    key: "6",
+    image: require("./images/question.jpg"),
+    screen: "Form"
+  }
 ];
 
 const buttonGroupSelectedColor = "#2089dc";
