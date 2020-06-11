@@ -1,3 +1,4 @@
 node_modules
 .idea
-.expo
+.expo/packager-info.json
+.expo/settings.json
